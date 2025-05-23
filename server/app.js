@@ -9,7 +9,7 @@ import stationDataRouter from "./routes/stationRoute.js"
 import waterQualityData from './routes/waterQualityRoutes.js';
 
 const app = express();
-const allowedOrigins = ['http://localhost:5173', 'https://yourdomain.com'];
+const allowedOrigins = ['http://localhost:5173', 'https://kham-river-project.vercel.app'];
 
 app.use(cors({
   origin: function (origin, callback) {
