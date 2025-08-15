@@ -12,7 +12,7 @@ import blogRoutes from './routes/blogRoutes.js';
 const app = express();
 const allowedOrigins = ['http://localhost:5173', 
   'https://kham-river-project.vercel.app',
-  'https://kham-river-project.vercel.app'];
+  'https://kham-river-monitor-app.vercel.app'];
 
 app.use(cors({
   origin: function (origin, callback) {
