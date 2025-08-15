@@ -4,6 +4,8 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Loader2 } from "lucide-react";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { formatIndianDateTime } from '@/utils/dateFormat';
 
 function Stations() {
   const [stations, setStations] = useState([]);
@@ -62,27 +64,28 @@ function Stations() {
     <div>
       <div className="container mx-auto p-6">
         <h1 className="text-2xl font-bold mb-6">Monitoring Stations</h1>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {stations.map((station) => (
-            <Card 
-              key={station._id} 
-              className="p-4 border rounded-lg bg-card hover:shadow-lg transition-shadow cursor-pointer"
-            >
-              <h2 className="text-lg font-semibold">{station.stationName}</h2>
-              <p className="text-sm text-muted-foreground">ID: {station.stationId}</p>
-              <p className="text-sm text-muted-foreground">Region: {station.region}</p>
-              <p className="text-sm text-muted-foreground">River Bank: {station.riverBankSide}</p>
-              <Button 
-                className="mt-4" 
-                variant="outline" 
-                size="sm"
-                onClick={() => handleStationClick(station)}
-              >
-                View Water Quality Data
-              </Button>
-            </Card>
-          ))}
-        </div>
+        <Card className="p-6">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Station Name</TableHead>
+                <TableHead>ID</TableHead>
+                <TableHead>Region</TableHead>
+                <TableHead>River Bank Side</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {stations.map((station) => (
+                <TableRow key={station._id}>
+                  <TableCell>{station.stationName}</TableCell>
+                  <TableCell>{station.stationId}</TableCell>
+                  <TableCell>{station.region}</TableCell>
+                  <TableCell>{station.riverBankSide}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </Card>
       </div>
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
@@ -99,7 +102,7 @@ function Stations() {
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <p className="text-sm text-muted-foreground">
-                        Date: {new Date(reading.timestamp).toLocaleString()}
+                        Date: {formatIndianDateTime(reading.timestamp)}
                       </p>
                       <p className="text-sm font-medium">pH: {reading.pH}</p>
                       <p className="text-sm font-medium">Temperature: {reading.temperature}°C</p>

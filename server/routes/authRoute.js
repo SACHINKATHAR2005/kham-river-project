@@ -5,7 +5,7 @@ const router = express.Router();
 
 router.post("/register",Register);
 
-// cc
+// http://localhost:5000/api/auth/register
 router.post("/login",Login);
 // http://localhost:5000/api/auth/login
 

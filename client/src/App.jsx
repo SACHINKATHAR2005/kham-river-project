@@ -6,7 +6,8 @@ import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import WaterQuality from "./pages/WaterQuality";
 import Predictions from "./pages/Predictions";
-import RealTime from "./pages/RealTime";
+import Stations from "./pages/Stations";
+import Blog from "./pages/Blog";
 
 import './App.css'
 
@@ -22,7 +23,8 @@ function App() {
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/water-quality" element={<WaterQuality />} />
             <Route path="/predictions" element={<Predictions />} />
-            <Route path="/real-time" element={<RealTime />} />
+            <Route path="/stations" element={<Stations />} />
+            <Route path="/blog" element={<Blog />} />
           </Routes>
         </main>
         <Footer />

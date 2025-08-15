@@ -1,10 +1,27 @@
 import axios from 'axios';
-import dotenv from 'dotenv';
-dotenv.config();
 
-const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:5000/api',
-  withCredentials: true
+export const api = axios.create({
+  baseURL: 'http://localhost:5000/api',
+  headers: {
+    'Content-Type': 'application/json'
+  }
 });
 
+export const mlApi = axios.create({
+  baseURL: 'http://localhost:8000'
+});
+
+// Add interceptors for api instance
+api.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem('token');
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => Promise.reject(error)
+);
+
+// Add default export
 export default api;

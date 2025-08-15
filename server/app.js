@@ -7,6 +7,7 @@ import connectDB from './db/db.js';
 import authRouter from "./routes/authRoute.js"
 import stationDataRouter from "./routes/stationRoute.js"
 import waterQualityData from './routes/waterQualityRoutes.js';
+import blogRoutes from './routes/blogRoutes.js';
 
 const app = express();
 const allowedOrigins = ['http://localhost:5173', 
@@ -29,8 +30,9 @@ app.use(express.json());
 app.use("/api/auth",authRouter)
 app.use("/api/station",stationDataRouter)
 app.use("/api/waterQuality",waterQualityData)
+app.use('/api/blog', blogRoutes);
 
-app.listen(process.env.PORT || 50000, () => {
+app.listen(process.env.PORT || 5000, () => {
     connectDB()
-    console.log(`Server is running on port ${process.env.PORT}`);
+    console.log(`Server is running on port ${process.env.PORT || 5000}`);
 })

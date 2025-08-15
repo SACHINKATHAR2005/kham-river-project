@@ -13,14 +13,12 @@ const stationDataSchema = new mongoose.Schema({
     },
     location: {
         type: {
-            latitude: { type: Number,  },
-            longitude: { type: Number,  }
-        },
-        
+            latitude: { type: Number },
+            longitude: { type: Number }
+        }
     },
     region: {
-        type: String,
-         // e.g., "Uttarakhand", "Varanasi", etc.
+        type: String
     },
     riverBankSide: {
         type: String,
@@ -33,5 +31,5 @@ const stationDataSchema = new mongoose.Schema({
     }
 }, { timestamps: true });
 
-export default  mongoose.model('StationData', stationDataSchema);
+export default mongoose.model('StationData', stationDataSchema);
 //export default mongoose.model("Admin", adminSchema);

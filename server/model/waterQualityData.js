@@ -17,22 +17,21 @@ const waterQualitySchema = new mongoose.Schema({
         required: true
     },
     temperature: {
-        type: Number, // °C
+        type: Number,
         required: true
     },
     turbidity: {
-        type: Number, // NTU
+        type: Number,
         required: true
     },
     tds: {
-        type: Number, // ppm
+        type: Number,
         required: true
     },
     ec: {
-        type: Number, // μS/cm
+        type: Number,
         required: true
     },
-   
     remarks: {
         type: String,
         default: ''
@@ -40,4 +39,3 @@ const waterQualitySchema = new mongoose.Schema({
 }, { timestamps: true });
 
 export default mongoose.model('WaterQuality', waterQualitySchema);
-//export default mongoose.model("Admin", adminSchema);

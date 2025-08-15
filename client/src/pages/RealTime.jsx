@@ -1,131 +1,198 @@
 import { useState, useEffect } from "react";
-import api from "@/api/axios";
 import { Card } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Loader2 } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { AlertTriangle, Droplet, Loader2, TrendingDown, TrendingUp } from "lucide-react";
+import { toast } from "sonner";
+import { api, mlApi } from '@/api/axios';
 import { WATER_QUALITY_STANDARDS } from '@/constants/waterQualityStandards';
 
 function RealTime() {
   const [stations, setStations] = useState([]);
-  const [latestData, setLatestData] = useState({});
+  const [selectedStation, setSelectedStation] = useState(null);
+  const [realTimeData, setRealTimeData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  // Fetch initial data
-  useEffect(() => {
-    const fetchInitialData = async () => {
-      try {
-        const [stationsRes, waterQualityRes] = await Promise.all([
-          api.get('/station/getall'),
-          api.get('/waterQuality/getall')
-        ]);
-
-        const stations = stationsRes.data.data;
-        setStations(stations);
-
-        // Group latest readings by station
-        const latestReadings = {};
-        stations.forEach(station => {
-          const stationData = waterQualityRes.data.data
-            .filter(reading => reading.stationId._id === station._id)
-            .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-          
-          latestReadings[station._id] = stationData[0] || null;
-        });
-
-        setLatestData(latestReadings);
-      } catch (error) {
-        console.error('Failed to fetch data:', error);
-      } finally {
+  const fetchStations = async () => {
+    try {
+      const response = await api.get('/station/getall');
+      if (response.data.success) {
+        setStations(response.data.data);
         setLoading(false);
+      } else {
+        throw new Error("Failed to fetch stations");
       }
-    };
-
-    fetchInitialData();
-
-    // Poll for new data every 30 seconds
-    const interval = setInterval(() => {
-      fetchInitialData();
-    }, 30000);
-
-    return () => clearInterval(interval);
-  }, []);
-
-  const getStatusColor = (value, param) => {
-    const standard = WATER_QUALITY_STANDARDS[param];
-    if (value < standard.min) return "bg-yellow-100 text-yellow-800";
-    if (value > standard.max) return "bg-red-100 text-red-800";
-    return "bg-green-100 text-green-800";
+    } catch (error) {
+      console.error("Failed to fetch stations:", error);
+      setError("Failed to load stations");
+      toast.error("Failed to fetch stations");
+      setLoading(false);
+    }
   };
 
-  if (loading) {
-    return (
-      <div className="flex justify-center items-center h-96">
-        <Loader2 className="h-8 w-8 animate-spin" />
-      </div>
-    );
-  }
+  const fetchRealTimeData = async () => {
+    if (!selectedStation) return;
+    
+    try {
+      setLoading(true);
+      setError(null);
+      
+      // Get latest water quality reading
+      const waterQualityResponse = await api.get(`/waterQuality/latest/${selectedStation}`);
+      console.log('Water quality response:', waterQualityResponse.data);
+      
+      if (!waterQualityResponse.data.success) {
+        throw new Error("Failed to fetch water quality data");
+      }
+
+      // Get predictions
+      const predictionsResponse = await mlApi.get(`/predict/station/${selectedStation}/1`);
+      console.log('Predictions response:', predictionsResponse.data);
+
+      const preds = Array.isArray(predictionsResponse.data)
+        ? predictionsResponse.data
+        : (predictionsResponse.data?.predictions ?? []);
+
+      // Structure the real-time data
+      const currentData = {
+        current: {
+          pH: waterQualityResponse.data.data.pH || 0,
+          temperature: waterQualityResponse.data.data.temperature || 0,
+          ec: waterQualityResponse.data.data.ec || 0,
+          tds: waterQualityResponse.data.data.tds || 0,
+          turbidity: waterQualityResponse.data.data.turbidity || 0,
+          timestamp: waterQualityResponse.data.data.timestamp
+        },
+        predicted: preds[0] || null
+      };
+
+      console.log('Structured data:', currentData);
+      setRealTimeData(currentData);
+
+    } catch (error) {
+      console.error("Failed to fetch real-time data:", error);
+      setError(error.response?.data?.detail || "Failed to fetch real-time data");
+      toast.error("Failed to fetch real-time data");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchStations();
+  }, []);
+
+  useEffect(() => {
+    if (selectedStation) {
+      setRealTimeData(null); // Clear previous data
+      fetchRealTimeData();
+      const interval = setInterval(fetchRealTimeData, 30000);
+      return () => clearInterval(interval);
+    }
+  }, [selectedStation]);
+
+  const getParameterStatus = (value, param) => {
+    const standards = WATER_QUALITY_STANDARDS[param];
+    if (!standards || !value) return 'normal';
+    return value < standards.min ? 'low' : 
+           value > standards.max ? 'high' : 'normal';
+  };
 
   return (
     <div className="container mx-auto p-6">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold mb-2">Real-time Monitoring</h1>
-        <p className="text-muted-foreground">
-          Live water quality data from all monitoring stations
-        </p>
+        <h1 className="text-3xl font-bold mb-2">Real-Time Monitoring</h1>
+        <p className="text-muted-foreground">Live water quality monitoring with AI predictions</p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {stations.map(station => (
-          <Card key={station._id} className="p-6">
-            <div className="flex justify-between items-start mb-4">
-              <div>
-                <h2 className="text-xl font-semibold">{station.stationName}</h2>
-                <p className="text-sm text-muted-foreground">{station.region}</p>
-              </div>
-              <Badge variant={latestData[station._id] ? "default" : "destructive"}>
-                {latestData[station._id] ? "Online" : "Offline"}
-              </Badge>
-            </div>
+      <Card className="p-6">
+        <div className="mb-6">
+          <Select 
+            value={selectedStation} 
+            onValueChange={setSelectedStation}
+          >
+            <SelectTrigger className="w-[250px]">
+              <SelectValue placeholder="Select monitoring station" />
+            </SelectTrigger>
+            <SelectContent>
+              {stations.map(station => (
+                <SelectItem key={station._id} value={station._id}>
+                  {station.stationName} - {station.region}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
 
-            {latestData[station._id] ? (
-              <div className="grid grid-cols-2 gap-4">
-                {Object.entries(WATER_QUALITY_STANDARDS).map(([param, standard]) => (
-                  <div key={param} className="space-y-1">
-                    <div className="flex justify-between">
-                      <span className="text-sm font-medium capitalize">{param}</span>
-                      <Badge 
-                        variant="secondary"
-                        className={getStatusColor(latestData[station._id][param], param)}
-                      >
-                        {latestData[station._id][param]} {standard.unit}
-                      </Badge>
-                    </div>
-                    <div className="h-1 bg-gray-100 rounded">
-                      <div 
-                        className={`h-full rounded ${
-                          getStatusColor(latestData[station._id][param], param).includes('green') 
-                            ? 'bg-green-500' 
-                            : getStatusColor(latestData[station._id][param], param).includes('red')
-                              ? 'bg-red-500'
-                              : 'bg-yellow-500'
-                        }`}
-                        style={{
-                          width: `${Math.min(100, (latestData[station._id][param] / standard.max) * 100)}%`
-                        }}
-                      />
-                    </div>
+        {error ? (
+          <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+            <p className="text-red-600">{error}</p>
+          </div>
+        ) : loading ? (
+          <div className="flex flex-col items-center justify-center py-8">
+            <Loader2 className="h-8 w-8 animate-spin text-blue-500 mb-2" />
+            <p className="text-muted-foreground">Loading real-time data...</p>
+          </div>
+        ) : realTimeData?.current ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {['pH', 'temperature', 'ec', 'tds', 'turbidity'].map(param => {
+              const currentValue = realTimeData.current[param];
+              const predictedValue = realTimeData.predicted?.[param];
+              const status = getParameterStatus(currentValue, param);
+              
+              return (
+                <Card 
+                  key={param} 
+                  className={`p-4 relative overflow-hidden ${
+                    status === 'normal' 
+                      ? 'bg-gradient-to-br from-green-50 to-green-100'
+                      : 'bg-gradient-to-br from-yellow-50 to-yellow-100'
+                  }`}
+                >
+                  <div className="flex justify-between items-start mb-4">
+                    <h3 className="text-lg font-semibold">{param.toUpperCase()}</h3>
+                    {status !== 'normal' && (
+                      <AlertTriangle className="h-5 w-5 text-yellow-500" />
+                    )}
                   </div>
-                ))}
-                <div className="col-span-2 text-xs text-muted-foreground mt-2">
-                  Last updated: {new Date(latestData[station._id].timestamp).toLocaleString()}
-                </div>
-              </div>
-            ) : (
-              <p className="text-muted-foreground text-sm">No data available</p>
-            )}
-          </Card>
-        ))}
-      </div>
+
+                  <div className="text-3xl font-bold mb-2">
+                    {currentValue?.toFixed(2)}
+                    {param === 'temperature' ? '°C' : ''}
+                  </div>
+
+                  {predictedValue && (
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <span>Predicted:</span>
+                      <span>{predictedValue.toFixed(2)}</span>
+                      {predictedValue > currentValue ? (
+                        <TrendingUp className="h-4 w-4 text-red-500" />
+                      ) : (
+                        <TrendingDown className="h-4 w-4 text-green-500" />
+                      )}
+                    </div>
+                  )}
+
+                  {status !== 'normal' && (
+                    <div className="mt-4 p-3 bg-white/50 rounded-lg">
+                      <p className="text-sm">
+                        {WATER_QUALITY_STANDARDS[param][`${status}Solution`]
+                        }
+                      </p>
+                    </div>
+                  )}
+
+                  <Droplet className="absolute right-4 bottom-4 h-16 w-16 text-blue-100 animate-pulse" />
+                </Card>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="text-center py-8 text-muted-foreground">
+            Select a station to view real-time data
+          </div>
+        )}
+      </Card>
     </div>
   );
 }

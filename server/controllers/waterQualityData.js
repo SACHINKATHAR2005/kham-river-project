@@ -1,5 +1,6 @@
 import waterQualityData from "../model/waterQualityData.js";
 import stationData from "../model/stationData.js";
+import WaterQuality from '../model/waterQualityData.js';
 
 export const createWaterQualityData = async (req, res) => {
     try {
@@ -41,17 +42,21 @@ export const createWaterQualityData = async (req, res) => {
 
 export const getAllWaterQualityData = async (req, res) => {
     try {
-        const allData = await waterQualityData.find().populate("stationId"); // Optional populate
-        return res.status(200).json({
-            message: "All Water Quality Data",
+        const data = await WaterQuality.find()
+            .populate('stationId')
+            .sort({ timestamp: -1 });
+
+        res.json({
             success: true,
-            data: allData,
+            message: "All Water Quality Data",
+            data: data
         });
     } catch (error) {
-        console.log(error);
-        return res.status(500).json({
-            message: "Internal Server Error",
+        console.error('Error fetching water quality data:', error);
+        res.status(500).json({
             success: false,
+            message: "Failed to fetch water quality data",
+            error: error.message
         });
     }
 };

@@ -12,6 +12,7 @@ import {
   ResponsiveContainer
 } from 'recharts';
 import api from '@/api/axios';
+import { formatIndianDate, formatIndianDateTime } from '@/utils/dateFormat';
 
 function StationDetails() {
   const { id } = useParams();
@@ -47,11 +48,8 @@ function StationDetails() {
 
   const formatData = (data) => {
     return data.map(item => ({
-      timestamp: new Date(item.updated).getTime(),
-      ph: parseFloat(item.ph || 0),
-      temperature: parseFloat(item.temperature || 0),
-      dissolvedOxygen: parseFloat(item.dissolvedOxygen || 0),
-      turbidity: parseFloat(item.turbidity || 0)
+      ...item,
+      formattedDate: formatIndianDateTime(item.timestamp)
     }));
   };
 
@@ -79,11 +77,11 @@ function StationDetails() {
                 dataKey="timestamp" 
                 type="number"
                 domain={['dataMin', 'dataMax']}
-                tickFormatter={(timestamp) => new Date(timestamp).toLocaleDateString()}
+                tickFormatter={(timestamp) => formatIndianDate(timestamp)}
               />
               <YAxis domain={[0, 14]} />
               <Tooltip 
-                labelFormatter={(timestamp) => new Date(timestamp).toLocaleString()}
+                labelFormatter={(timestamp) => formatIndianDateTime(timestamp)}
                 formatter={(value) => value.toFixed(2)}
               />
               <Legend />
@@ -109,11 +107,11 @@ function StationDetails() {
                 dataKey="timestamp" 
                 type="number"
                 domain={['dataMin', 'dataMax']}
-                tickFormatter={(timestamp) => new Date(timestamp).toLocaleDateString()}
+                tickFormatter={(timestamp) => formatIndianDate(timestamp)}
               />
               <YAxis />
               <Tooltip 
-                labelFormatter={(timestamp) => new Date(timestamp).toLocaleString()}
+                labelFormatter={(timestamp) => formatIndianDateTime(timestamp)}
               />
               <Legend />
               <Line 
@@ -138,11 +136,11 @@ function StationDetails() {
                 dataKey="timestamp" 
                 type="number"
                 domain={['dataMin', 'dataMax']}
-                tickFormatter={(timestamp) => new Date(timestamp).toLocaleDateString()}
+                tickFormatter={(timestamp) => formatIndianDate(timestamp)}
               />
               <YAxis />
               <Tooltip 
-                labelFormatter={(timestamp) => new Date(timestamp).toLocaleString()}
+                labelFormatter={(timestamp) => formatIndianDateTime(timestamp)}
                 formatter={(value) => value.toFixed(2)}
               />
               <Legend />
@@ -168,11 +166,11 @@ function StationDetails() {
                 dataKey="timestamp" 
                 type="number"
                 domain={['dataMin', 'dataMax']}
-                tickFormatter={(timestamp) => new Date(timestamp).toLocaleDateString()}
+                tickFormatter={(timestamp) => formatIndianDate(timestamp)}
               />
               <YAxis />
               <Tooltip 
-                labelFormatter={(timestamp) => new Date(timestamp).toLocaleString()}
+                labelFormatter={(timestamp) => formatIndianDateTime(timestamp)}
               />
               <Legend />
               <Line 

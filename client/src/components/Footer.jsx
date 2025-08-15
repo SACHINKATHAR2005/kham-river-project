@@ -24,11 +24,7 @@ function Footer() {
                   Data Analysis
                 </a>
               </li>
-              <li>
-                <a href="/real-time" className="text-muted-foreground hover:text-foreground">
-                  Real-time Monitoring
-                </a>
-              </li>
+              
             </ul>
           </div>
           
@@ -56,9 +52,9 @@ function Footer() {
           <div>
             <h3 className="font-semibold mb-3">Contact</h3>
             <ul className="space-y-2 text-sm">
-              <li className="text-muted-foreground">Email: contact@example.com</li>
-              <li className="text-muted-foreground">Phone: (123) 456-7890</li>
-              <li className="text-muted-foreground">Address: Your Address Here</li>
+              <li className="text-muted-foreground">Email: contact@gmail.com</li>
+              <li className="text-muted-foreground">Phone: 932230614</li>
+              <li className="text-muted-foreground">Address: Mit college,Chh. Sambhajinagar</li>
             </ul>
           </div>
         </div>
