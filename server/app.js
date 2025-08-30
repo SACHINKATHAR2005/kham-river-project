@@ -8,6 +8,7 @@ import authRouter from "./routes/authRoute.js"
 import stationDataRouter from "./routes/stationRoute.js"
 import waterQualityData from './routes/waterQualityRoutes.js';
 import blogRoutes from './routes/blogRoutes.js';
+import aiRoutes from './routes/aiRoutes.js';
 
 const app = express();
 const allowedOrigins = ['http://localhost:5173', 
@@ -31,6 +32,7 @@ app.use("/api/auth",authRouter)
 app.use("/api/station",stationDataRouter)
 app.use("/api/waterQuality",waterQualityData)
 app.use('/api/blog', blogRoutes);
+app.use('/api/ai', aiRoutes);
 
 app.listen(process.env.PORT || 5000, () => {
     connectDB()

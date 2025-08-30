@@ -1,14 +1,20 @@
 import axios from 'axios';
 
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+const ML_API_URL = import.meta.env.VITE_ML_API_URL || 'http://localhost:8000';
+
 export const api = axios.create({
-  baseURL: 'https://kham-river-project.onrender.com/api',
+  baseURL: API_URL,
   headers: {
     'Content-Type': 'application/json'
   }
 });
 
 export const mlApi = axios.create({
-  baseURL: 'http://localhost:8000'
+  baseURL: ML_API_URL,
+  headers: {
+    'Content-Type': 'application/json'
+  }
 });
 
 // Add interceptors for api instance

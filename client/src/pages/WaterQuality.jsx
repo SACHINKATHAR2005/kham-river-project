@@ -12,6 +12,51 @@ import { WATER_QUALITY_STANDARDS } from '@/constants/waterQualityStandards';
 import { saveAs } from 'file-saver';
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
+import AIChatPanel from '@/components/AIChatPanel';
+
+// Static standards text for display on cards per user request
+const STANDARD_DISPLAY = {
+  pH: '6.5 – 8.5',
+  turbidity: '≤ 10 NTU',
+  tds: '≤ 500 mg/L',
+  ec: '≤ 300 µS/cm',
+};
+
+// Lightweight inline sparkline component (no external deps)
+function Sparkline({ data = [], width = 180, height = 36, stroke = '#2563eb' }) {
+  if (!Array.isArray(data) || data.length === 0) {
+    return (
+      <div className="h-9 text-xs text-muted-foreground flex items-center">No data</div>
+    );
+  }
+  const w = width;
+  const h = height;
+  const min = Math.min(...data);
+  const max = Math.max(...data);
+  const dx = data.length > 1 ? w / (data.length - 1) : 0;
+  const range = max - min || 1; // avoid divide by zero
+  const points = data.map((v, i) => {
+    const x = i * dx;
+    const y = h - ((v - min) / range) * h;
+    return `${x.toFixed(2)},${y.toFixed(2)}`;
+  }).join(' ');
+  const last = data[data.length - 1];
+  const first = data[0];
+  const up = last >= first;
+  return (
+    <div className="w-full">
+      <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} className="block">
+        <polyline points={points} fill="none" stroke={stroke} strokeWidth="2" />
+      </svg>
+      <div className="flex items-center justify-between text-[11px] text-muted-foreground">
+        <span>7d trend</span>
+        <span className={up ? 'text-green-600' : 'text-red-600'}>{up ? '▲' : '▼'}</span>
+      </div>
+    </div>
+  );
+}
 
 function WaterQuality() {
   const [activeTab, setActiveTab] = useState("actual");
@@ -21,6 +66,30 @@ function WaterQuality() {
   const [stations, setStations] = useState([]);
   const [selectedStation, setSelectedStation] = useState('all');
   const [loading, setLoading] = useState(true);
+  // AI Ask dialog state
+  const [aiOpen, setAiOpen] = useState(false);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiAnswer, setAiAnswer] = useState('');
+  const [aiQuestion, setAiQuestion] = useState('');
+  const [aiActiveParam, setAiActiveParam] = useState(null);
+  const [aiTyping, setAiTyping] = useState(false);
+  // Pagination for Actual Readings
+  const [visibleCount, setVisibleCount] = useState(25);
+
+  // minimal safe markdown renderer for dialog answer
+  const renderMarkdown = (text) => {
+    if (!text) return '';
+    const escapeHtml = (s) => s
+      .replaceAll('&', '&amp;')
+      .replaceAll('<', '&lt;')
+      .replaceAll('>', '&gt;');
+    let out = escapeHtml(text);
+    out = out.replace(/`([^`]+)`/g, '<code class="px-1 py-0.5 rounded bg-muted/60">$1<\/code>');
+    out = out.replace(/\*\*([^*]+)\*\*/g, '<strong>$1<\/strong>');
+    out = out.replace(/\*([^*]+)\*/g, '<em>$1<\/em>');
+    out = out.replace(/\n/g, '<br/>');
+    return out;
+  };
 
   const fetchData = async () => {
     setLoading(true);
@@ -33,6 +102,7 @@ function WaterQuality() {
       setStations(stationsRes.data.data);
       setAllActualData(actualDataRes.data.data); // Store all data
       setActualData(actualDataRes.data.data); // Initially show all data
+      setVisibleCount(25); // reset pagination
     } catch (error) {
       toast.error("Failed to fetch data");
     } finally {
@@ -44,11 +114,13 @@ function WaterQuality() {
   const filterDataByStation = (stationId) => {
     if (stationId === 'all') {
       setActualData(allActualData);
+      setVisibleCount(25);
     } else {
       const filtered = allActualData.filter(reading => 
         reading.stationId?._id === stationId || reading.stationId === stationId
       );
       setActualData(filtered);
+      setVisibleCount(25);
     }
   };
 
@@ -178,6 +250,66 @@ function WaterQuality() {
     }
   };
 
+  // Open Ask AI dialog prefilled for a parameter
+  const openAskAIForParam = (paramKey) => {
+    setAiActiveParam(paramKey);
+    const currentValue = predictions[0]?.[paramKey];
+    const status = currentValue ? getParameterStatus(currentValue, paramKey) : 'normal';
+    const defaultQ = status === 'high'
+      ? `How can we reduce high ${paramKey.toUpperCase()} levels effectively while complying with Indian and global standards?`
+      : status === 'low'
+      ? `How can we increase low ${paramKey.toUpperCase()} to within acceptable range safely?`
+      : `What are best practices to maintain ${paramKey.toUpperCase()} within the normal range?`;
+    setAiQuestion(defaultQ);
+    setAiAnswer('');
+    setAiOpen(true);
+  };
+
+  const submitAskAI = async () => {
+    if (!aiQuestion?.trim()) {
+      toast.error('Please enter a question');
+      return;
+    }
+    try {
+      setAiLoading(true);
+      const param = aiActiveParam;
+      const value = param ? predictions[0]?.[param] : undefined;
+      const stationName = selectedStation === 'all' ? undefined : stations.find(s => s._id === selectedStation)?.stationName;
+      const standards = WATER_QUALITY_STANDARDS; // can be swapped with dynamic standards if provided by backend
+      const resp = await api.post('/ai/ask', { question: aiQuestion, param, value, stationName, standards });
+      if (resp.data?.success) {
+        const answer = resp.data.answer || '';
+        // simulate thinking
+        const delay = 500 + Math.floor(Math.random() * 500);
+        setAiTyping(true);
+        setAiAnswer('');
+        await new Promise(r => setTimeout(r, delay));
+        // typewriter effect
+        let i = 0;
+        const step = 3; // chars per tick
+        const speed = 12; // ms per tick
+        await new Promise((resolve) => {
+          const interval = setInterval(() => {
+            i += step;
+            setAiAnswer(answer.slice(0, i));
+            if (i >= answer.length) {
+              clearInterval(interval);
+              resolve();
+            }
+          }, speed);
+        });
+        setAiTyping(false);
+      } else {
+        toast.error(resp.data?.message || 'AI could not answer');
+      }
+    } catch (e) {
+      console.error('Ask AI error:', e);
+      toast.error('Failed to get AI response');
+    } finally {
+      setAiLoading(false);
+    }
+  };
+
   if (loading) {
     return <div className="flex justify-center items-center h-96">Loading...</div>;
   }
@@ -219,7 +351,7 @@ function WaterQuality() {
               <strong>Showing:</strong> {selectedStation === 'all' 
                 ? 'All Stations' 
                 : stations.find(s => s._id === selectedStation)?.stationName
-              } ({actualData.length} readings)
+              } ({Math.min(visibleCount, actualData.length)} of {actualData.length} readings)
             </p>
           </div>
 
@@ -236,8 +368,8 @@ function WaterQuality() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {actualData.map((reading) => (
-                <TableRow key={reading._id}>
+              {actualData.slice(0, visibleCount).map((reading, idx) => (
+                <TableRow key={reading._id} className={idx % 2 === 0 ? 'bg-white' : 'bg-muted/20'}>
                   <TableCell>{reading.stationId?.stationName}</TableCell>
                   <TableCell>{formatIndianDateTime(reading.timestamp)}</TableCell>
                   <TableCell>{reading.pH?.toFixed(2)}</TableCell>
@@ -249,6 +381,14 @@ function WaterQuality() {
               ))}
             </TableBody>
           </Table>
+
+          {visibleCount < actualData.length && (
+            <div className="flex justify-center mt-4">
+              <Button variant="secondary" onClick={() => setVisibleCount((c) => Math.min(c + 25, actualData.length))}>
+                Load more ({Math.min(visibleCount + 25, actualData.length) - visibleCount})
+              </Button>
+            </div>
+          )}
         </TabsContent>
 
         <TabsContent value="predictions" className="space-y-4">
@@ -298,57 +438,98 @@ function WaterQuality() {
               </ul>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {['pH', 'temperature', 'ec', 'tds', 'turbidity'].map(param => {
-                const currentValue = predictions[0]?.[param];
-                const status = currentValue ? getParameterStatus(currentValue, param) : 'normal';
-                const standards = WATER_QUALITY_STANDARDS[param];
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              {/* Left: parameter cards */}
+              <div className="lg:col-span-2">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {['pH', 'temperature', 'ec', 'tds', 'turbidity'].map(param => {
+                  const currentValue = predictions[0]?.[param];
+                  const status = currentValue ? getParameterStatus(currentValue, param) : 'normal';
+                  const standards = WATER_QUALITY_STANDARDS[param];
+                  const series = predictions.map(p => p?.[param]).filter(v => typeof v === 'number');
 
-                return (
-                  <Card key={param} className="p-4 relative overflow-hidden">
-                    <div className="flex justify-between items-start mb-4">
-                      <div>
-                        <h3 className="text-lg font-semibold">{param.toUpperCase()}</h3>
-                        {selectedStation !== 'all' && (
-                          <p className="text-sm text-muted-foreground">
-                            {stations.find(s => s._id === selectedStation)?.stationName}
-                          </p>
+                  return (
+                    <Card
+                      key={param}
+                      className="p-4 relative overflow-hidden cursor-pointer hover:shadow-md transition-shadow"
+                      onClick={() => openAskAIForParam(param)}
+                    >
+                      <div className="flex justify-between items-start mb-4">
+                        <div>
+                          <h3 className="text-lg font-semibold">{param.toUpperCase()}</h3>
+                          {selectedStation !== 'all' && (
+                            <p className="text-sm text-muted-foreground">
+                              {stations.find(s => s._id === selectedStation)?.stationName}
+                            </p>
+                          )}
+                        </div>
+                        {status === 'normal' ? (
+                          <CheckCircle className="h-5 w-5 text-green-500" />
+                        ) : (
+                          <AlertTriangle className="h-5 w-5 text-yellow-500" />
                         )}
                       </div>
-                      {status === 'normal' ? (
-                        <CheckCircle className="h-5 w-5 text-green-500" />
-                      ) : (
-                        <AlertTriangle className="h-5 w-5 text-yellow-500" />
-                      )}
-                    </div>
-                    
-                    <div className="text-3xl font-bold mb-2">
-                      {currentValue?.toFixed(2)}
-                      {param === 'temperature' ? '°C' : ''}
-                    </div>
-                    
-                    <div className="text-sm text-muted-foreground mb-4">
-                      Normal range: {standards.min} - {standards.max}
-                    </div>
-
-                    {status !== 'normal' && (
-                      <div className="mt-4 p-3 bg-yellow-50 rounded-md">
-                        <p className="font-semibold mb-1">Recommended Action:</p>
-                        <p className="text-sm">
-                          {status === 'low' ? standards.lowSolution : standards.highSolution}
-                        </p>
+                      
+                      <div className="text-3xl font-bold mb-2">
+                        {currentValue?.toFixed(2)}
+                        {param === 'temperature' ? '°C' : ''}
                       </div>
-                    )}
 
-                    {/* Add gradient background effect */}
-                    <div className={`absolute inset-0 opacity-10 ${
-                      status === 'normal' 
-                        ? 'bg-gradient-to-br from-green-200 to-green-400' 
-                        : 'bg-gradient-to-br from-yellow-200 to-yellow-400'
-                    }`} />
-                  </Card>
-                );
-              })}
+                      {/* Sparkline trend */}
+                      <div className="mb-3 -ml-1">
+                        <Sparkline data={series} width={200} height={36} />
+                      </div>
+                       
+                      {/* Normal range removed per request */}
+                      {STANDARD_DISPLAY[param] && (
+                        <div className="mb-3">
+                          <span className="text-xs font-medium bg-muted px-2 py-1 rounded">
+                            Standard: {param.toUpperCase()} {STANDARD_DISPLAY[param]}
+                          </span>
+                        </div>
+                      )}
+
+                      {status !== 'normal' && (
+                        <div className="mt-4 p-3 bg-yellow-50 rounded-md">
+                          <p className="font-semibold mb-1">Recommended Action:</p>
+                          <p className="text-sm">
+                            {status === 'low' ? standards.lowSolution : standards.highSolution}
+                          </p>
+                        </div>
+                      )}
+
+                      <div className="mt-4">
+                        <Button
+                          variant="secondary"
+                          onClick={(e) => { e.stopPropagation(); openAskAIForParam(param); }}
+                        >
+                          Ask AI about {param.toUpperCase()}
+                        </Button>
+                      </div>
+
+                      {/* Add gradient background effect */}
+                      <div className={`absolute inset-0 opacity-10 ${
+                        status === 'normal' 
+                          ? 'bg-gradient-to-br from-green-200 to-green-400' 
+                          : 'bg-gradient-to-br from-yellow-200 to-yellow-400'
+                      }`} />
+                    </Card>
+                  );
+                })}
+                </div>
+              </div>
+
+              {/* Right: sticky AI chat */}
+              <div className="lg:col-span-1">
+                <div className="lg:sticky lg:top-4">
+                  <AIChatPanel
+                    title="Ask AI (Water Quality Assistant)"
+                    latestValues={predictions[0]}
+                    stationName={selectedStation === 'all' ? undefined : stations.find(s => s._id === selectedStation)?.stationName}
+                    standards={WATER_QUALITY_STANDARDS}
+                  />
+                </div>
+              </div>
             </div>
           )}
 
@@ -395,6 +576,46 @@ function WaterQuality() {
           )}
         </TabsContent>
       </Tabs>
+
+      {/* Ask AI Dialog */}
+      <Dialog open={aiOpen} onOpenChange={setAiOpen}>
+        <DialogContent style={{ fontFamily: 'Poppins, system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, sans-serif' }}>
+          <DialogHeader>
+            <DialogTitle>Ask AI {aiActiveParam ? `about ${aiActiveParam.toUpperCase()}` : ''}</DialogTitle>
+            <DialogDescription>
+              Questions must be about water quality and environment. The AI is constrained to this domain.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2 text-left">
+            <Textarea
+              value={aiQuestion}
+              onChange={(e) => setAiQuestion(e.target.value)}
+              placeholder="Type your question..."
+              rows={5}
+            />
+            {aiTyping && (
+              <div className="text-sm text-green-700">
+                <span className="font-medium">Assistant:</span>
+                <span className="ml-2 inline-flex items-center gap-1 opacity-70">
+                  typing
+                  <span className="inline-block w-1 h-1 bg-current rounded-full animate-bounce [animation-delay:-0.2s]"></span>
+                  <span className="inline-block w-1 h-1 bg-current rounded-full animate-bounce"></span>
+                  <span className="inline-block w-1 h-1 bg-current rounded-full animate-bounce [animation-delay:0.2s]"></span>
+                </span>
+              </div>
+            )}
+            {aiAnswer && (
+              <div
+                className="p-3 rounded border bg-muted/30 text-sm max-h-60 overflow-auto"
+                dangerouslySetInnerHTML={{ __html: renderMarkdown(aiAnswer) }}
+              />
+            )}
+          </div>
+          <DialogFooter>
+            <Button onClick={submitAskAI} disabled={aiLoading}>{aiLoading ? 'Asking...' : 'Ask'}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

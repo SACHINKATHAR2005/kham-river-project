@@ -1,8 +1,9 @@
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { Menu, X } from "lucide-react";
 
 function Navbar() {
+	const location = useLocation();
 	const [isAdmin, setIsAdmin] = useState(false);
 	const [isLoggedIn, setIsLoggedIn] = useState(false);
 	const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -31,52 +32,54 @@ function Navbar() {
 		}
 	}, []);
 
+	const isActive = (path) => location.pathname === path;
+
 	return (
-		<nav className="border-b bg-white sticky top-0 z-50">
+		<nav className="border-b bg-white/90 backdrop-blur-sm sticky top-0 z-50 shadow-sm">
 			<div className="container mx-auto px-4">
 				<div className="flex h-16 items-center justify-between">
 					{/* Logo */}
-					<Link to="/" className="text-lg sm:text-xl font-bold text-blue-600">
+					<Link to="/" className="text-lg sm:text-xl font-bold text-blue-600 hover:text-blue-700 transition-colors">
 						Kham River Monitor
 					</Link>
 
 					{/* Desktop Navigation */}
-					<div className="hidden md:flex gap-6">
+					<div className="hidden md:flex gap-1">
 						<Link
 							to="/"
-							className="px-3 py-2 rounded-md hover:bg-gray-100 transition-colors"
+							className={`px-3 py-2 rounded-md transition-colors ${isActive('/') ? 'bg-gray-100 text-blue-700' : 'hover:bg-gray-100'}`}
 						>
 							Home
 						</Link>
 						{isAdmin && (
 							<Link
 								to="/dashboard"
-								className="px-3 py-2 rounded-md hover:bg-gray-100 transition-colors"
+								className={`px-3 py-2 rounded-md transition-colors ${isActive('/dashboard') ? 'bg-gray-100 text-blue-700' : 'hover:bg-gray-100'}`}
 							>
 								Dashboard
 							</Link>
 						)}
 						<Link
 							to="/water-quality"
-							className="px-3 py-2 rounded-md hover:bg-gray-100 transition-colors"
+							className={`px-3 py-2 rounded-md transition-colors ${isActive('/water-quality') ? 'bg-gray-100 text-blue-700' : 'hover:bg-gray-100'}`}
 						>
 							Water Quality
 						</Link>
 						<Link
 							to="/predictions"
-							className="px-3 py-2 rounded-md hover:bg-gray-100 transition-colors"
+							className={`px-3 py-2 rounded-md transition-colors ${isActive('/predictions') ? 'bg-gray-100 text-blue-700' : 'hover:bg-gray-100'}`}
 						>
 							Predictions
 						</Link>
 						<Link
 							to="/stations"
-							className="px-3 py-2 rounded-md hover:bg-gray-100 transition-colors"
+							className={`px-3 py-2 rounded-md transition-colors ${isActive('/stations') ? 'bg-gray-100 text-blue-700' : 'hover:bg-gray-100'}`}
 						>
 							Stations
 						</Link>
 						<Link
 							to="/blog"
-							className="px-3 py-2 rounded-md hover:bg-gray-100 transition-colors"
+							className={`px-3 py-2 rounded-md transition-colors ${isActive('/blog') ? 'bg-gray-100 text-blue-700' : 'hover:bg-gray-100'}`}
 						>
 							Blog
 						</Link>
@@ -85,7 +88,7 @@ function Navbar() {
 					{/* Desktop Login Button */}
 					<Link
 						to="/login"
-						className="hidden md:block px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 transition-colors"
+						className="hidden md:block px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 active:scale-[.99] transition"
 					>
 						{isLoggedIn ? 'Logout' : 'Login'}
 					</Link>
@@ -110,7 +113,7 @@ function Navbar() {
 						<div className="px-2 pt-2 pb-3 space-y-1">
 							<Link
 								to="/"
-								className="block px-3 py-2 rounded-md text-base font-medium hover:bg-gray-100 transition-colors"
+								className={`block px-3 py-2 rounded-md text-base font-medium transition-colors ${isActive('/') ? 'bg-gray-100 text-blue-700' : 'hover:bg-gray-100'}`}
 								onClick={() => setIsMobileMenuOpen(false)}
 							>
 								Home
@@ -118,7 +121,7 @@ function Navbar() {
 							{isAdmin && (
 								<Link
 									to="/dashboard"
-									className="block px-3 py-2 rounded-md text-base font-medium hover:bg-gray-100 transition-colors"
+									className={`block px-3 py-2 rounded-md text-base font-medium transition-colors ${isActive('/dashboard') ? 'bg-gray-100 text-blue-700' : 'hover:bg-gray-100'}`}
 									onClick={() => setIsMobileMenuOpen(false)}
 								>
 									Dashboard
@@ -126,35 +129,35 @@ function Navbar() {
 							)}
 							<Link
 								to="/water-quality"
-								className="block px-3 py-2 rounded-md text-base font-medium hover:bg-gray-100 transition-colors"
+								className={`block px-3 py-2 rounded-md text-base font-medium transition-colors ${isActive('/water-quality') ? 'bg-gray-100 text-blue-700' : 'hover:bg-gray-100'}`}
 								onClick={() => setIsMobileMenuOpen(false)}
 							>
 								Water Quality
 							</Link>
 							<Link
 								to="/predictions"
-								className="block px-3 py-2 rounded-md text-base font-medium hover:bg-gray-100 transition-colors"
+								className={`block px-3 py-2 rounded-md text-base font-medium transition-colors ${isActive('/predictions') ? 'bg-gray-100 text-blue-700' : 'hover:bg-gray-100'}`}
 								onClick={() => setIsMobileMenuOpen(false)}
 							>
 								Predictions
 							</Link>
 							<Link
 								to="/stations"
-								className="block px-3 py-2 rounded-md text-base font-medium hover:bg-gray-100 transition-colors"
+								className={`block px-3 py-2 rounded-md text-base font-medium transition-colors ${isActive('/stations') ? 'bg-gray-100 text-blue-700' : 'hover:bg-gray-100'}`}
 								onClick={() => setIsMobileMenuOpen(false)}
 							>
 								Stations
 							</Link>
 							<Link
 								to="/blog"
-								className="block px-3 py-2 rounded-md text-base font-medium hover:bg-gray-100 transition-colors"
+								className={`block px-3 py-2 rounded-md text-base font-medium transition-colors ${isActive('/blog') ? 'bg-gray-100 text-blue-700' : 'hover:bg-gray-100'}`}
 								onClick={() => setIsMobileMenuOpen(false)}
 							>
 								Blog
 							</Link>
 							<Link
 								to="/login"
-								className="block px-3 py-2 mt-4 text-center text-white bg-blue-600 rounded-md hover:bg-blue-700 transition-colors"
+								className="block px-3 py-2 mt-4 text-center text-white bg-blue-600 rounded-md hover:bg-blue-700 active:scale-[.99] transition"
 								onClick={() => setIsMobileMenuOpen(false)}
 							>
 								{isLoggedIn ? 'Logout' : 'Login'}

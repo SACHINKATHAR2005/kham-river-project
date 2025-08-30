@@ -19,6 +19,8 @@ class WaterQualityPredictor:
         self.current_accuracy = 0
         self.base_dir = os.path.dirname(os.path.abspath(__file__))
         self.models_dir = os.path.join(self.base_dir, 'models')
+        # Configure backend base URL (for fetching training data)
+        self.base_url = os.getenv("ML_BACKEND_URL", "http://localhost:5000")
         
         # Create models directory if it doesn't exist
         if not os.path.exists(self.models_dir):
@@ -184,7 +186,7 @@ class WaterQualityPredictor:
         try:
             # Fetch station-specific historical data
             response = await requests.get(
-                f'http://localhost:5000/api/waterQuality/station/{station_id}'
+                f'{self.base_url}/api/waterQuality/station/{station_id}'
             )
             data = response.json()['data']
 
@@ -203,7 +205,7 @@ class WaterQualityPredictor:
             async with httpx.AsyncClient(timeout=30.0) as client:
                 # First verify if station exists
                 station_response = await client.get(
-                    f'http://localhost:5000/api/station/get/{station_id}'
+                    f'{self.base_url}/api/station/get/{station_id}'
                 )
                 
                 if station_response.status_code != 200:
@@ -213,7 +215,7 @@ class WaterQualityPredictor:
 
                 # Fetch station's water quality data
                 data_response = await client.get(
-                    f'http://localhost:5000/api/waterQuality/station/{station_id}'
+                    f'{self.base_url}/api/waterQuality/station/{station_id}'
                 )
                 
                 print(f"Data response status: {data_response.status_code}")  # Debug log
@@ -260,7 +262,7 @@ class WaterQualityPredictor:
         try:
             # Fetch all water quality data for general prediction
             async with httpx.AsyncClient(timeout=30.0) as client:
-                response = await client.get('http://localhost:5000/api/waterQuality/getall')
+                response = await client.get(f'{self.base_url}/api/waterQuality/getall')
                 
                 if response.status_code != 200:
                     print("Failed to fetch general water quality data")
@@ -421,7 +423,7 @@ def train_water_quality_model():
         predictor = WaterQualityPredictor()
         
         # Fetch data from backend
-        response = requests.get('http://localhost:5000/api/waterQuality/getall')
+        response = requests.get(f"{predictor.base_url}/api/waterQuality/getall")
         
         if response.status_code != 200:
             print(f"Error fetching data: {response.status_code}")
