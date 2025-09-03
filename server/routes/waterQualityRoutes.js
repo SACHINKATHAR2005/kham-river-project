@@ -180,6 +180,107 @@ router.post('/upload-csv', upload.single('file'), async (req, res) => {
   }
 });
 
+// Add single water quality data entry
+router.post('/add', async (req, res) => {
+  try {
+    const { stationId, pH, temperature, ec, tds, turbidity, timestamp } = req.body;
+
+    // Validate required fields
+    if (!stationId || pH === undefined || temperature === undefined || 
+        ec === undefined || tds === undefined || turbidity === undefined) {
+      return res.status(400).json({
+        success: false,
+        message: 'All water quality parameters are required'
+      });
+    }
+
+    // Verify station exists
+    const station = await StationModel.findById(stationId);
+    if (!station) {
+      return res.status(404).json({
+        success: false,
+        message: 'Station not found'
+      });
+    }
+
+    // Create water quality data object
+    const waterQualityData = {
+      stationId,
+      timestamp: timestamp ? new Date(timestamp) : new Date(),
+      pH: parseFloat(pH),
+      temperature: parseFloat(temperature),
+      ec: parseFloat(ec),
+      tds: parseFloat(tds),
+      turbidity: parseFloat(turbidity)
+    };
+
+    // Validate data
+    if (!validateData(waterQualityData)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid data values. Please check parameter ranges.'
+      });
+    }
+
+    // Save the data
+    const newReading = new WaterQualityModel(waterQualityData);
+    await newReading.save();
+
+    // Trigger model training after successful single entry
+    await triggerModelTraining();
+
+    res.status(201).json({
+      success: true,
+      message: 'Water quality data added successfully',
+      data: newReading
+    });
+
+  } catch (error) {
+    console.error('Error adding water quality data:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error adding water quality data',
+      error: error.message
+    });
+  }
+});
+
+// Get water quality data by station
+router.get('/station/:stationId', async (req, res) => {
+  try {
+    const { stationId } = req.params;
+    const { limit = 100, page = 1 } = req.query;
+
+    const skip = (page - 1) * limit;
+    
+    const waterQualityData = await WaterQualityModel.find({ stationId })
+      .populate('stationId')
+      .sort({ timestamp: -1 })
+      .limit(parseInt(limit))
+      .skip(skip);
+
+    const total = await WaterQualityModel.countDocuments({ stationId });
+
+    res.json({
+      success: true,
+      data: waterQualityData,
+      pagination: {
+        total,
+        page: parseInt(page),
+        limit: parseInt(limit),
+        pages: Math.ceil(total / limit)
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching station water quality data:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching station water quality data',
+      error: error.message
+    });
+  }
+});
+
 // Get latest water quality reading for a station
 router.get('/latest/:stationId', async (req, res) => {
   try {
