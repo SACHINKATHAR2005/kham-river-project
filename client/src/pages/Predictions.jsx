@@ -17,6 +17,8 @@ import { WATER_QUALITY_STANDARDS } from '@/constants/waterQualityStandards';
 function Predictions() {
   const [predictions, setPredictions] = useState([]);
   const [standards, setStandards] = useState(null);
+  const [allPredictions, setAllPredictions] = useState([]);
+  const [compareAll, setCompareAll] = useState(false);
 
   const [stations, setStations] = useState([]);
   const [selectedStation, setSelectedStation] = useState('all');
