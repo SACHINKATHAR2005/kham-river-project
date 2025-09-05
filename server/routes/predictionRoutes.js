@@ -6,7 +6,7 @@ const router = express.Router();
 // Get predictions for all stations
 router.get('/:days', async (req, res) => {
   try {
-    const mlResp = await axios.get(`http://localhost:8000/predict/${req.params.days}`);
+    const mlResp = await axios.get(`https://kham-river-ml-service.onrender.com/predict/${req.params.days}`);
     const payload = mlResp.data;
     // Normalize shape: ensure predictions array and alias data for backward compatibility
     const predictions = Array.isArray(payload) ? payload : payload.predictions || [];
@@ -33,11 +33,11 @@ router.get('/station/:stationId/:days', async (req, res) => {
     let mlResp;
     try {
       mlResp = await axios.get(
-        `http://localhost:8000/predict/station/${req.params.stationId}/${req.params.days}`
+        `https://kham-river-ml-service.onrender.com/predict/station/${req.params.stationId}/${req.params.days}`
       );
     } catch (e) {
       // Fallback to general predictions
-      mlResp = await axios.get(`http://localhost:8000/predict/${req.params.days}`);
+      mlResp = await axios.get(`https://kham-river-ml-service.onrender.com/predict/${req.params.days}`);
     }
     const payload = mlResp.data;
     const predictions = Array.isArray(payload) ? payload : payload.predictions || [];
@@ -60,7 +60,7 @@ router.get('/station/:stationId/:days', async (req, res) => {
 // Optional: expose standards directly via server
 router.get('/standards', async (_req, res) => {
   try {
-    const mlResp = await axios.get('http://localhost:8000/standards');
+    const mlResp = await axios.get('https://kham-river-ml-service.onrender.com/standards');
     res.json({ success: true, standards: mlResp.data });
   } catch (error) {
     res.status(500).json({ success: false, message: 'Failed to fetch standards', error: error.message });

@@ -25,7 +25,7 @@ const upload = multer({
 // Helper function to trigger ML model training
 async function triggerModelTraining() {
   try {
-    const response = await axios.post('http://localhost:8000/train');
+    const response = await axios.post('https://kham-river-ml-service.onrender.com/train');
     console.log('ML model training triggered:', response.data);
     return response.data;
   } catch (error) {
@@ -186,13 +186,13 @@ router.post('/add', async (req, res) => {
     const { stationId, pH, temperature, ec, tds, turbidity, timestamp } = req.body;
 
     // Validate required fields
-    if (!stationId || pH === undefined || temperature === undefined || 
-        ec === undefined || tds === undefined || turbidity === undefined) {
-      return res.status(400).json({
-        success: false,
-        message: 'All water quality parameters are required'
-      });
-    }
+    // if (!stationId || pH === undefined || temperature === undefined || 
+    //     ec === undefined || tds === undefined || turbidity === undefined) {
+    //   return res.status(400).json({
+    //     success: false,
+    //     message: 'All water quality parameters are required'
+    //   });
+    // }
 
     // Verify station exists
     const station = await StationModel.findById(stationId);
